@@ -1,5 +1,5 @@
 # Scholarly Citations and Twitter: An Insight into the Case of Economists
-Final data science project for Econ-5970 of the University of Oklahoma, Norman Campus. This project aims to scrape data from [RePec](https://ideas.repec.org/), which is a database containing information on registered economists, their publications, institution of affiliation, and contributions. I use R Studio Version 1.0.153 for all web scraping and coding practices. 
+Final data science project for Econ-5970 of the University of Oklahoma, Norman Campus. This project aims to scrape data from [RePec](https://ideas.repec.org/), which is a database containing information on registered economists, their publications, institution of affiliation, and contributions. I use R Studio Version 1.0.153 for all web scraping and coding practices, as well as the [SelectorGadget](http://selectorgadget.com/) which helps click CSS selectors from static websites and allows you to extract and parse data as text. The extension can be easily downloaded and installed for free. 
 
 ## Getting Started
 In order to replicate the results, the following packages need to called and/or installed in R Studio:
@@ -11,7 +11,7 @@ library(stargazer)
 library(ggplot2)
 library(ggrepel)
 ```
-All the information was extracted from [IDEAS](https://ideas.repec.org/), however, three main web pages within this website were used for this project: 1) [Top 25% Economists by Twitter Follwoers](https://ideas.repec.org/top/top.person.twitter.html), 2) [Top 5% Authors, Number of Citations, as of MArch 2018](https://ideas.repec.org/top/top.person.nbcites.html), and 3) [Top 5% Authors, h-index, as of March 2018](https://ideas.repec.org/top/top.person.hindex.html). We read each the html information of each of these links and denominate them website1, website2, and website3 respectively. 
+All the information was extracted from [IDEAS](https://ideas.repec.org/), however, three main web pages within this website were used for this project: 1) [Top 25% Economists by Twitter Follwoers](https://ideas.repec.org/top/top.person.twitter.html), 2) [Top 5% Authors, Number of Citations, as of MArch 2018](https://ideas.repec.org/top/top.person.nbcites.html), and 3) [Top 5% Authors, h-index, as of March 2018](https://ideas.repec.org/top/top.person.hindex.html); which we will call 'website,' 'website2,' and 'website3.' We read the html information from each of these links by using the function 'read_html; from the rvest package. 
 ```
 website  <- read_html("https://ideas.repec.org/top/top.person.twitter.html")
 website2 <- read_html("https://ideas.repec.org/top/top.person.nbcites.html")
@@ -19,34 +19,34 @@ website3 <- read_html("https://ideas.repec.org/top/top.person.hindex.html")
 ```
 
 ### Extracting data from website1
-This data set will contain information on Twitter ranking, author name, the IDEAS id (which is the personal link to each author's profile within the IDEAS data base, link to the authors' Citec profile (which has more extensive information on on the academic activity of the author), number of twitter followers and twitter handles.
+This data set will contain information on Twitter ranking, author name, the IDEAS id (which is the personal link to each author's profile within the IDEAS data base, link to the authors' Citec profile (which has more extensive information on on the academic activity of the author), number of twitter followers, and twitter handles.
 
-First, we will extract the rankings based on the number of twitter followers. However, there is a period at the end of each number, but the second line of code will help us clean it: 
+First, we will extract the ranking information based on the number of twitter followers, which is done by the first line of code. With the help of the SelectorGadget, we click on the desired elements we want to scrape, and discover that the CSS selector for that element is "td:nth-child(2)". The pipe operator makes the scraping of data easier, as we can tell R to directly trim the text related to our CSS selector from a website. The returned information will not be clean, in fact each ranking as a period at the end. We will trim the this last character with the second line of code.  
 ```
 rank.twitter <- website %>% html_nodes("td:nth-child(2)") %>% html_text(trim = TRUE)
 rank.twitter <- str_sub(rank.twitter, start = 0, end = -2) # to trim last "period" character
 ```
-We proceed to extract the authors/economists' names and last names. The data will include some empty cells, so we clean it again with the last line of code:
+We proceed to extract the authors/economists' names and last names, and again, the CSS selector that contains this information will be "#listing a". We do not trim the text related to this node directly, as we did in the previous example, because this node contains far more information that we will be using, so we store it in a different vector that we will call 'economist.' From this vector, we do trim the text, store it in a vector named 'author' and clean all the empty observations:
 ```
 economist    <- website %>% html_nodes("#listing a")
 author       <- economist %>% html_text(trim = TRUE)
 author       <- author[author!=""] # to drop empty cells
 ```
-To extract the IDEAS ID, we will run the following code and omit all NA values in order to clean our data: 
+To extract the IDEAS ID, we will run the following code and omit all NA values in order to clean our data. This information is not embedded as  text, but as an attribute. Because of this reason, we will be using the function 'html_attr' from the Rvest package:
 ```
 author.id    <- html_attr(economist, "name")
 author.id    <- na.omit(author.id) # drop all NA values
 ```
-And then we extract the number of Twitter followers, which fortunately does not need to be cleaned:
+Finally, to the number of Twitter followers, we can fortunately do it with one line of code. This information did not need to be cleaned:
 ```
 t.followers <- website %>% html_nodes("td~ td+ td") %>% html_text(trim = TRUE)
 ```
-We finally bind all strings of information to build a data frame with the following code:
+We finally bind all strings of information to build a data frame by running the following code:
 ```
 top25.twitter <- cbind(rank.twitter, author, author.id, ideas.link, t.followers)
 top25.twitter <- as.data.frame(top25.twitter)
 ```
-And we keep editing the format. The following line of code will re-order the 'Last Name, Name' format to the 'Name and Last Name' format, so it can be read more easily, but mainly to avoid futher troubles when merging the different data sets we are preparing. 
+To edit and make our data set look a bit nicer, we can reorder the 'Last Name, Name' format associated with the author name, to a 'Name and Last Name' format. We are doing this so it can be readable, but also to avoid further troubles when merging the different data sets we are preparing. We are spliting our column by the comma symbol into two splits, then we paste such splits:
 ```
 splits<- str_split_fixed(top25.twitter$author, ",", 2)
 top25.twitter$author <- paste(splits[,2], splits[,1], sep = ' ')
@@ -56,7 +56,7 @@ Our column with information on the IDEAS' links to each authors' personal profil
 ```
 top25.twitter$ideas.link<- paste("https://ideas.repec.org", top25.twitter$ideas.link, sep = "")
 ```
-With this last piece of information, we will be able to extract the Twitter handles from every registered author with a Twitter account that appears in the list 'Top 25% Economists, by Twitter Followers.' We will run a loop for this purpose, so we need to create an empty vector to store the data our loop will gather: 
+With this last piece of information, we will be able to extract the Twitter handles from every registered author with a Twitter account that appears in the list 'Top 25% Economists, by Twitter Followers.' We will run a loop for this purpose, so we need to create an empty vector to store the data our loop will gather. The CSS selector associated with the Twitter handles is "tr:nth-child(10) td+ td a", so we add this information as well. Fortunately, this information is stored as text, so we will only trim this text. Running this code might take longer, depending on the capacities of your personal computer: 
 ```
 t.handle      <- 0 # create empty vector 
 for (i in top25.twitter$ideas.link){
@@ -71,12 +71,11 @@ We save it as a data frame and delete the first row with empty values:
 t.handle <- as.data.frame(t.handle)
 t.handle <- t.handle[-1,] # drop first empty row 
 ```
-We inorcporate the Twitter handle column into our data set: 
+We incorporate the Twitter handle column into our data set: 
 ```
 top25.twitter$t.handle<- t.handle
 ```
-Again, with loops, we extract each authors' personal link in the Citec data base, drop the first empty row, and incoporate as a column to our first data set from website1. The citec.link variable will have a lot of missing values, but I haven't explored the reason behind this. The first data set will look like this:
-
+Again, with loops, we extract each authors' personal link in the Citec data base, drop the first empty row, and incoporate as a column to our first data set from website1. The citec.link variable will have a lot of missing values, but I haven't explored the reason behind this. Finally, after we incorporate this column into the data set, our final data set will look  like this: 
 ```
 citec.link<- 0
 for (i in top25.twitter$ideas.link){
@@ -101,7 +100,7 @@ head(top25.twitter)
 ### Extracting Data from Website2
 Data set contains information on author name, IDEAS ID profile, insititution of affiliation, and total number.
 
-We extract this information with the help of the CSS selector, we click on the the names of the authors and find out that the node that hosts this information is "td >a", so we extact text information embedded in this node and store in a vector named author1:
+We extract this information with the help of the CSS selector, we click on the the names of the authors and find out that the node that hosts this information is "td >a", so we extact text embedded in this node and store in a vector named author1:
 ```
 author1 <- website2 %>% html_nodes("td > a")
 ```
@@ -111,28 +110,28 @@ author <- website2 %>% html_nodes("td > a") %>% html_text(trim=TRUE)
 author <- author[-c(1:21)] # get rid of first 21 rows
 author <- author[author!=""] # drop empty observations 
 ```
-Then we proceed to extract the ID associated with the authors' profiles within the IDEAS data base, and get rid of the empty cells in order to clean the information:
+Then, we proceed to extract the ID associated with the authors' profiles within the IDEAS data base, and get rid of the empty cells in order to clean the information. Again, the IDs cannot be extracted as text, but as html attributes, therefore we use a slightly different code:
 ```
 id <- html_attr(author1, "name")
 id <- na.omit(id) # get rid of empty cells
 ```
-Again, we use the CSS selector to click on citations data from the website, which will return the following node "td~ td+ td". The pipe operator simply indicates the different commands that we are performing on the node, so we can only get data on the number of citations. The second line of code will drop the first 35 rows that have no relevant information:
+Again, we use the CSS selector to click on the citations information from the website, which will return the following node "td~ td+ td". The pipe operator simply indicates tha different commands that we are performing on the node, so we can easily get the number of citations. The second line of code will drop the first 35 rows that have no relevant information:
 ```
 citations <- website2 %>% html_nodes("td~ td+ td") %>% html_text(trim=TRUE)
 citations <- citations[-c(1:35)] # drop first 35 rows with irrelevant information
 ```
-In a similar fashion, we extract data on the institution of affiliation by inputing the node "p" in the same code. We name this vactor" "affiliation." To clean this data, we drop rows on top and at the bottom because they have no information. However, affiliation data is really messy but we will clean this later on:
+In a similar fashion, we extract data on the institution of affiliation by inputing the node "p" in the same code. We name this vector "affiliation." To clean this data, we drop rows on top and at the bottom because they have no information. However, affiliation data is really messy but we will clean this later on:
 ```
 affiliation <- website2 %>% html_nodes("p") %>% html_text(trim=TRUE)
 affiliation <- affiliation[-c(1:3)] # drop initial rows with no info
 affiliation <- affiliation[-c(2635:2659)] # drop last rows with no info 
 ```
-We finally build the data set by bind the different columns with data on author, ID, citations, and affiliations and store it as a data frame. The
+We finally build the data set by binding the different columns with data on author, ID, citations, and affiliations and store it as a data frame.
 ```
 top5.citations <- cbind(author, id, citations, affiliation)
 top5.citations <- as.data.frame(top5.citations)
 ```
-We proceed to clead data on institution of affiliation, which is not formatted nicely. We will use the "str_split_fixed" function to separate data on the affiliation column by comma symbols, with a total of 10 splits that will correspond to the 1)Department, 2)University, 3)City, 4)State(country)secondinstitution, 5)City of second institution, 6)state of second university. Then, we create new strings of variables out of the splits. We drop the initial "affiliation column."
+We proceed to clead data on institution of affiliation, which is not formatted nicely. We will use the "str_split_fixed" function again, to separate data on the affiliation column by comma symbols, with a total of 10 splits that will correspond to the 1)Department, 2)University, 3)City, 4)State(country)secondinstitution, 5)City of second institution, 6)state of second university, 7)second university, 8) second location, 9) second state/country. Then, we create new strings of variables out of the splits. We drop the initial "affiliation column."
 ```
 splits2 <- str_split_fixed(top5.citations$affiliation, ",",10) 
 top5.citations$department<- splits2[,1]
@@ -146,8 +145,34 @@ top5.citations$scnd.location<- splits2[,8]
 top5.citations$scnd.state.country<- splits2[,9]
 top5.citations$affiliation<- NULL # drop initial column where we got splits from initially
 ```
+This data set will look like this:
+```
+head(top5.citations)
+              author     id citations                       department                   university                       city
+1    Andrei  Shleifer  psh93     41870          Department of Economics           Harvard University                  Cambridge
+2    James J. Heckman  phe22     28047          Department of Economics        University of Chicago                    Chicago
+3     Robert J. Barro pba251     26492          Department of Economics           Harvard University                  Cambridge
+4 Robert F. Engle III   pen9     22861               Finance Department     Stern School of Business  New York University (NYU)
+5    Kenneth S Rogoff pro164     22585          Department of Economics           Harvard University                  Cambridge
+6  Joseph E. Stiglitz  pst33     22541 Finance and Economics Department  Graduate School of Business        Columbia University
+                                           scnd.country.instition                           scnd.city                scnd.state            scnd.university
+1  Massachusetts (USA)National Bureau of Economic Research (NBER)                           Cambridge       Massachusetts (USA)                           
+2                                                  Illinois (USA)                                                                                         
+3                                             Massachusetts (USA)                                                                                         
+4                                                   New York City  New York (USA)Volatility Institute  Stern School of Business  New York University (NYU)
+5                                             Massachusetts (USA)                                                                                         
+6                                                   New York City                      New York (USA)                                                     
+   scnd.location scnd.state.country
+1                                  
+2                                  
+3                                  
+4  New York City     New York (USA)
+5                                  
+6                                  
+
+```
 ### Extracting data from website 3
-This data set will contain data on author name, the H-index, and the rank associated with the rank. 
+This data set will contain data on author name, the H-index, and the rank associated with the H-index. 
 
 We start off by extracting the ranking information from website 3, which wil have a similar code to our previous exapmples, but we will change the html node to "tr > :nth-child(1)" that we discovered with the help of the CSS selector. We also drop the first 6 rows with no relevant information: 
 ```
@@ -181,31 +206,17 @@ h.index<- h.index[-c(1:35)]
 Finally, we bind these strings of data into one data frame that we will name "top5.hindex." We will drop the columns with second instuttions, cities or states for simplicity. Although the final data set on Top 5% authors by H-index will look like this:
 ```
 top5.hindex<- cbind(id, h.ranking, h.index, h.author)
-head(top5.citations)
-               author     id citations                       department                   university                       city
-1    Andrei  Shleifer  psh93     41870          Department of Economics           Harvard University                  Cambridge
-2    James J. Heckman  phe22     28047          Department of Economics        University of Chicago                    Chicago
-3     Robert J. Barro pba251     26492          Department of Economics           Harvard University                  Cambridge
-4 Robert F. Engle III   pen9     22861               Finance Department     Stern School of Business  New York University (NYU)
-5    Kenneth S Rogoff pro164     22585          Department of Economics           Harvard University                  Cambridge
-6  Joseph E. Stiglitz  pst33     22541 Finance and Economics Department  Graduate School of Business        Columbia University
-                                           scnd.country.instition                           scnd.city                scnd.state            scnd.university
-1  Massachusetts (USA)National Bureau of Economic Research (NBER)                           Cambridge       Massachusetts (USA)                           
-2                                                  Illinois (USA)                                                                                         
-3                                             Massachusetts (USA)                                                                                         
-4                                                   New York City  New York (USA)Volatility Institute  Stern School of Business  New York University (NYU)
-5                                             Massachusetts (USA)                                                                                         
-6                                                   New York City                      New York (USA)                                                     
-   scnd.location scnd.state.country
-1                                  
-2                                  
-3                                  
-4  New York City     New York (USA)
-5                                  
-6                                  
+head(top5.hindex)
+  id h.ranking h.index             author
+1 psh93         1      87   Andrei  Shleifer
+2 phe22         2      79   James J. Heckman
+3 pti33         3      74       Jean  Tirole
+4 pre33         4      66 Carmen M. Reinhart
+5 pst33         5      65 Joseph E. Stiglitz
+6 pac16         6      64    Daron  Acemoglu 
 ```
 ## Merging Data Sets
-Now that we have a total of 3 data sets (top5.index, top5.citations, and top25.twitter), we can merge them to build a final data set which we will use for our regression analysis. 
+Now that we have a total of 3 data sets (top5.hindex, top5.citations, and top25.twitter), we can merge them to build a final data set which we will use for our regression analysis. 
 
 We will start by merging the top5.index and top.5ciations data sets by ID and atuhor (which are variables that will match). We also rename the column h.author by author only, to make the merging process easier. We call this first set of merged data merged.data1:
 ```
@@ -218,7 +229,7 @@ We merge merged.data1 with top25.twitter, by matching observations by ID and aut
 colnames(top25.twitter)[which(names(top25.twitter)=="author.id")] <- "id"
 merged.data2<- merge(top25.twitter, merged.data1, by="id") # dropping all non-matching observations
 ```
-Finally, we clean our data set, mainly we get read on repeated observations and information that I do not consider relevant, although it could potentially be used for other sorts of statistical anaysis. 
+Finally, we clean our data set, mainly we get read on repeated column-wise observations and information that I do not consider relevant, although it could potentially be used for other sorts of statistical anaysis. 
 ```
 merged.data2$author.y<- NULL
 merged.data2$scnd.country.instition<- NULL
@@ -258,7 +269,7 @@ We finally create additional variables that will take the natural log of our var
 final.dataset$ln.followers<- log(final.dataset$t.followers)
 final.dataset$ln.citations<- log(final.dataset$citations)
 ```
-Now that we have our final data set, we can attach, so we can reorder the variables to be visually more appealing. We drop the citec.link column because no observations were lefet after mergning our data sets. 
+Now that we have our final data set, we can attach, so we can reorder the variables to be visually more appealing. We drop the citec.link column because no observations were left after mergning our data sets. 
 ```
 attach(final.dataset) 
 final.dataset<- final.dataset[c("id", "author.x", "ideas.link", "t.handle", "citec.link","department", "university", "city", "rank.twitter", "t.followers", "ln.followers", "citations", "ln.citations", "h.ranking", "h.index")] 
@@ -281,7 +292,7 @@ head(final.dataset)
 > 
 ```
 ## Statistical Analysis
-Now that we have our final data set, we can start computing the summary statistics and regression analysis. We start with descriptive statistics on our variables of interest, which are t.followers, citations, and h.index, that we bind in a new data frame and name it descriptive. Then, we compute the summary statistics: 
+Now that we have our final data set, we can start computing the summary statistics and regression analysis. We start with descriptive statistics on our variables of interest, which are t.followers, citations, and h.index, that we bind in a new data frame that we name 'descriptive.' Then we compute the summary statistics.
 ```
 descriptive<- cbind(final.dataset$t.followers, final.dataset$citations, final.dataset$h.index) # assign column names
 colnames(descriptive)<- c("t.followers", "citations", "h.index")
@@ -323,7 +334,7 @@ skewness(descriptive$h.index, na.rm = TRUE)
 kurtosis(descriptive$h.index, na.rm = TRUE)
 [1] 3.932327
 ```
-The regression analysis will be calculated with the following code, where the percent change point of followers on tweitter will be the dependent variable, and ln.citation and h.index will be our independent variables.
+The regression analysis will be calculated with the following code, where the percent change point of Twitter followers will be the dependent variable, and ln.citation and h.index will be our independent variables.
 ```
 results.regression<- lm(ln.followers ~ ln.citations + h.index, data = final.dataset)
 summary(results.regression)
