@@ -11,7 +11,7 @@ library(stargazer)
 library(ggplot2)
 library(ggrepel)
 ```
-All the information was extracted from [IDEAS](https://ideas.repec.org/), however, three main web pages within this website were used for this project: 1) [Top 25% Economists by Twitter Follwoers](https://ideas.repec.org/top/top.person.twitter.html), 2) [Top 5% Authors, Number of Citations, as of MArch 2018](https://ideas.repec.org/top/top.person.nbcites.html), and 3) [Top 5% Authors, h-index, as of March 2018](https://ideas.repec.org/top/top.person.hindex.html); which we will call 'website,' 'website2,' and 'website3.' We read the html information from each of these links by using the function 'read_html; from the rvest package. 
+All the information was extracted from [IDEAS](https://ideas.repec.org/), however, three main web pages within this website were used for this project: 1) [Top 25% Economists by Twitter Followers](https://ideas.repec.org/top/top.person.twitter.html), 2) [Top 5% Authors, Number of Citations, as of MArch 2018](https://ideas.repec.org/top/top.person.nbcites.html), and 3) [Top 5% Authors, h-index, as of March 2018](https://ideas.repec.org/top/top.person.hindex.html); which we will call 'website,' 'website2,' and 'website3.' We read the html information from each of these links by using the function 'read_html; from the rvest package. 
 ```
 website  <- read_html("https://ideas.repec.org/top/top.person.twitter.html")
 website2 <- read_html("https://ideas.repec.org/top/top.person.nbcites.html")
